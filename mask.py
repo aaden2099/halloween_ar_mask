@@ -1,7 +1,7 @@
-import time
-import edgeiq
+import copy
 import cv2
 from mask_helper import transparent_overlay
+import time
 
 
 def main():
@@ -9,13 +9,13 @@ def main():
     face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 
     # Load mask to overlay on faces
-    groucho_glasses = cv2.imread('groucho_glasses.png', -1)
-
-    # Create the mask for the Groucho Glasses
-    groucho_glasses_mask = groucho_glasses[:, :, 3]
+    mask = cv2.imread('groucho_glasses.png', -1)
 
     # Convert glasses image to BGR (eliminate alpha channel):
-    groucho_glasses = groucho_glasses[:, :, 0:]
+    mask = mask[:, :, 0:]
+
+    # Make a deep copy of the mask
+    mask_copy = copy.deepcopy(mask)
 
     # Create VideoCapture object to get images from the camera:
     video_capture = cv2.VideoCapture(0)
@@ -40,17 +40,20 @@ def main():
                 glass_ymax = int(y + h)
                 sh_glass = glass_ymax - glass_ymin
                 face_glass_roi_color = frame[glass_ymin:glass_ymax, int(x):int(x + w)]
-                groucho_glasses = cv2.resize(groucho_glasses, (w, sh_glass), interpolation=cv2.INTER_CUBIC)
-                transparent_overlay(face_glass_roi_color, groucho_glasses)
+                mask_copy = cv2.resize(mask_copy, (w, sh_glass), interpolation=cv2.INTER_LINEAR)
+                transparent_overlay(face_glass_roi_color, mask_copy)
 
-        # Display the resulting frame
-        cv2.imshow('alwaysAI - Halloween Mask Demo', frame)
+        # Display the resulting frame with title
+        cv2.imshow('Mask Demo', frame)
 
-        k = cv2.waitKey(30) & 0xff
-        if k == 27:
+        # Deep copy is made so that same mask image isn't reused. Otherwise mask will become pixelated.
+        mask_copy = copy.deepcopy(mask)
+
+        # Press q to stop the program (lowercase Q)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-    # Release everything:
+    # Release everything when program ends:
     video_capture.release()
     cv2.destroyAllWindows()
 
